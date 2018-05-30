@@ -226,9 +226,10 @@ class FileSettings(SettingsBase):
 				self._node = None
 			else:
 				self._node = self._parent._node.find(self._name)
-				for child in self._node:
-					if child.get('value', '0') == '1':
-						SettingsBase.__setattr__(self, child.tag, ast.literal_eval(child.text))
+				if self._node != None:
+					for child in self._node:
+						if child.get('value', '0') == '1':
+							SettingsBase.__setattr__(self, child.tag, ast.literal_eval(child.text))
 		
 	def save(self):
 		if self._changed:
