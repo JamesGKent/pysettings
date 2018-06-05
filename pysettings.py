@@ -36,7 +36,7 @@ class SettingsError(ValueError):
 
 class SettingsBase(object):
 	_reserved_names = ['_name', '_parent', '_children', '_changed', '_keywords', '_deletedkeywords', '_filepath']
-	def __init__(self, name, parent=None, defaults=None):
+	def __init__(self, name, parent=None, defaults=None, recursive=False):
 		self._name = name
 		self._keywords = []
 		self._deletedkeywords = []
@@ -50,7 +50,7 @@ class SettingsBase(object):
 		self._parent = parent
 		if defaults:
 			self.load_defaults(defaults)
-		self.load()
+		self.load(recursive)
 		
 	def load_defaults(self, defaults, force=False):
 		if type(defaults) == dict:
@@ -66,6 +66,12 @@ class SettingsBase(object):
 		except:
 			pass
 		object.__del__(self)
+		
+	def __getattr__(self, name):
+		if name == 'children':
+			return [child._name for child in self._children]
+		else:
+			return object.__getattr__(self, name)
 		
 	def __setattr__(self, name, val):
 		if name not in self._reserved_names:
@@ -89,6 +95,14 @@ class SettingsBase(object):
 		self._deletedkeywords.append(name)
 		self._changed = True
 		object.__delattr__(self, name)
+		
+	def __getitem__(self, name):
+		if name == 'children':
+			return [child._name for child in self._children]
+		for child in self._children:
+			if child._name == name:
+				return child
+		raise KeyError
 		
 	def load(self):
 		pass
@@ -142,7 +156,7 @@ def CreateKeyPath(name, parent=None):
 
 class RegSettings(SettingsBase):
 	_reserved_names = SettingsBase._reserved_names + ['_keytype', '_keypath']
-	def __init__(self, keytype=None, name=None, parent=None, defaults=None):
+	def __init__(self, keytype=None, name=None, parent=None, defaults=None, recursive=False):
 		if (name==None):
 			raise ValueError('name must be given')
 		if (keytype==None and parent==None) or (keytype!=None and parent!=None):
@@ -156,9 +170,9 @@ class RegSettings(SettingsBase):
 		else:
 			self._keytype = keytype
 			self._keypath = CreateKeyPath(name)
-		SettingsBase.__init__(self, name, parent, defaults)
+		SettingsBase.__init__(self, name, parent, defaults, recursive)
 		
-	def load(self):
+	def load(self, recursive=False):
 		try:
 			rootkey = winreg.OpenKey(self._keytype, self._keypath, 0, winreg.KEY_READ)
 		except OSError: # key doesn't exist
@@ -170,6 +184,11 @@ class RegSettings(SettingsBase):
 				SettingsBase.__setattr__(self, name, ast.literal_eval(data))
 			except (ValueError, SyntaxError):
 				raise SettingsError("Error")
+		if recursive:
+			keys, vals, mod = winreg.QueryInfoKey(rootkey)
+			for i in range(0, keys):
+				name = winreg.EnumKey(rootkey, i)
+				s = Settings(parent=self, name=name, recursive=True)
 		
 	def save(self):
 		if self._changed:
@@ -192,7 +211,7 @@ class RegSettings(SettingsBase):
 		
 class FileSettings(SettingsBase):
 	_reserved_names = SettingsBase._reserved_names + ['_filepath', '_name', '_node']
-	def __init__(self, filepath=None, name=None, parent=None, defaults=None):
+	def __init__(self, filepath=None, name=None, parent=None, defaults=None, recursive=False):
 		if (name==None):
 			raise ValueError("name must be provided")
 		if (filepath==None and parent==None):
@@ -206,9 +225,9 @@ class FileSettings(SettingsBase):
 			self._filepath = filepath
 		self._name = name
 		
-		SettingsBase.__init__(self, name, parent, defaults)
+		SettingsBase.__init__(self, name, parent, defaults, recursive)
 		
-	def load(self):
+	def load(self, recursive=False):
 		if self._filepath:
 			try:
 				tree = ET.parse(self._filepath)
@@ -230,13 +249,20 @@ class FileSettings(SettingsBase):
 					for child in self._node:
 						if child.get('value', '0') == '1':
 							SettingsBase.__setattr__(self, child.tag, ast.literal_eval(child.text))
+		if recursive:
+			if self._node != None:
+				for child in self._node:
+					if child.get('value', '0') == '0':
+						s = Settings(parent=self, name=child.tag, recursive=True)
 		
 	def save(self):
+		print(self._name)
+		
+		if self._filepath:
+			self._node = ET.Element(self._name)
+		else:
+			self._node = ET.SubElement(self._parent._node, self._name)
 		if self._changed:
-			if self._filepath:
-				self._node = ET.Element(self._name)
-			else:
-				self._node = ET.SubElement(self._parent._node, self._name)
 			for keyword in self._keywords:
 				attr = getattr(self, keyword)
 				if callable(attr):
@@ -252,16 +278,16 @@ class FileSettings(SettingsBase):
 			tree = ET.ElementTree(self._node)
 			tree.write(self._filepath)
 
-def Settings(keytype=None, filepath=None, name=None, parent=None, defaults=None):
+def Settings(keytype=None, filepath=None, name=None, parent=None, defaults=None, recursive=False):
 	if (parent):
 		if isinstance(parent, RegSettings):
-			return RegSettings(None, name, parent, defaults)
+			return RegSettings(None, name, parent, defaults, recursive)
 		elif isinstance(parent, FileSettings):
-			return FileSettings(filepath, name, parent, defaults)
+			return FileSettings(filepath, name, parent, defaults, recursive)
 		else:
 			raise SettingsError('parent must be an instance of a settings class')
 	else:
 		if (keytype and _windows_platform):
-			return RegSettings(keytype, name, None, defaults)
+			return RegSettings(keytype, name, None, defaults, recursive)
 		else:
-			return FileSettings(filepath, name, None, defaults)
+			return FileSettings(filepath, name, None, defaults, recursive)
