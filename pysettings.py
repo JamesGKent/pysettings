@@ -256,8 +256,6 @@ class FileSettings(SettingsBase):
 						s = Settings(parent=self, name=child.tag, recursive=True)
 		
 	def save(self):
-		print(self._name)
-		
 		if self._filepath:
 			self._node = ET.Element(self._name)
 		else:
