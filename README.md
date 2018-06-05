@@ -18,9 +18,13 @@ the RegSettings class has the following arguments:
  - name - a name for this key level of settings
  - parent - should be another instance of a settings object (if not the top level)
  - defaults - a dictionary of default attributes (if required)
-
+ - recursive - boolean flag to make settings load recursively (defaults to false)
 If a parent is specified the keytype should be `None` and the parents name attribute is used to build the path to this level of settings.
 note that the save method is only required on the top level settings object, as it recursively calls all child settings objects `save` method
+
+the pysettings module also has:
+ - SoftwarePrefix - a flag to indicate that the name given to the [settings](Settings) wrapper should be prefixed with "Software"
+ - VendorPrefix - this can be set to a string of the vendor name to put all subkeys under that name to keep things tidy
 
 ### FileSettings - non windows platforms e.g. linux, MacOS, BSD etc
 the FileSettings class has the following arguments:
@@ -64,6 +68,14 @@ def test_function(arg=None):
 s = pysettings.Settings(filepath='./test.xml', name='functiontest')
 s.func = test_function
 ```  
+
+### dict access
+the settings objects can also be treated as dicts:
+```
+settings['children'] # returns the names of the children
+settings.children # also works
+settings['child1'] # returns the settings object called "child1"
+```
 
 ## Notes
  - while sibling settings objects cannot have the same name, a settings object can have an attribute and a child settings object with the same name.
