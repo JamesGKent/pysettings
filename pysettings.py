@@ -65,7 +65,6 @@ class SettingsBase(object):
 			self.save()
 		except:
 			pass
-		object.__del__(self)
 		
 	def __getattr__(self, name):
 		if name == 'children':
@@ -110,6 +109,10 @@ class SettingsBase(object):
 	def save(self):
 		for child in self._children:
 			child.save()
+			
+	def delete(self):
+		if self._parent:
+			self._parent._children.remove(self)
 			
 class DummySettings():
 	_reserved_names = ['_name', '_parent', '_keywords']
@@ -208,6 +211,11 @@ class RegSettings(SettingsBase):
 			self._changed = False
 		SettingsBase.save(self)
 		
+	def delete(self):
+		for child in list(self._children):
+			child.delete()
+		winreg.DeleteKey(self._keytype, self._keypath)
+		SettingsBase.delete(self)
 		
 class FileSettings(SettingsBase):
 	_reserved_names = SettingsBase._reserved_names + ['_filepath', '_name', '_node']
