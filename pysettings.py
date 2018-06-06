@@ -260,17 +260,15 @@ class FileSettings(SettingsBase):
 			self._node = ET.Element(self._name)
 		else:
 			self._node = ET.SubElement(self._parent._node, self._name)
-		if self._changed:
-			for keyword in self._keywords:
-				attr = getattr(self, keyword)
-				if callable(attr):
-					val = repr(attr())
-				else:
-					val = repr(attr)
-				e = ET.SubElement(self._node, keyword)
-				e.text = val
-				e.set('value', '1')
-			self._changed = False
+		for keyword in self._keywords:
+			attr = getattr(self, keyword)
+			if callable(attr):
+				val = repr(attr())
+			else:
+				val = repr(attr)
+			e = ET.SubElement(self._node, keyword)
+			e.text = val
+			e.set('value', '1')
 		SettingsBase.save(self)
 		if self._filepath:
 			tree = ET.ElementTree(self._node)
