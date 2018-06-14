@@ -52,10 +52,13 @@ class SettingsBase(object):
 			self.load_defaults(defaults)
 		self.load(recursive)
 		
-	def load_defaults(self, defaults, force=False):
+	def load_defaults(self, defaults, force=False, recursedicts=False):
 		if type(defaults) == dict:
 			for key in defaults:
-				if not hasattr(self, key) or force:
+				if type(defaults[key]) == dict and recursedicts:
+					s = Settings(parent=self, name=key)
+					s.load_defaults(defaults[key], recursedicts=True)
+				elif not hasattr(self, key) or force:
 					setattr(self, key, defaults[key])
 		else:
 			raise ValueError("defaults must be a dict of keywords:value")
@@ -111,6 +114,8 @@ class SettingsBase(object):
 			child.save()
 			
 	def delete(self):
+		for child in self._children:
+			child.delete()
 		if self._parent:
 			self._parent._children.remove(self)
 			
