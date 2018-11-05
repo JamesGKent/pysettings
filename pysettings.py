@@ -64,7 +64,6 @@ class SettingsBase(object):
 			raise ValueError("defaults must be a dict of keywords:value")
 		
 	def __del__(self):
-		print('pysettings del %s' % self)
 		try:
 			self.save()
 		except:
