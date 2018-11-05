@@ -64,10 +64,13 @@ class SettingsBase(object):
 			raise ValueError("defaults must be a dict of keywords:value")
 		
 	def __del__(self):
+		print('pysettings del %s' % self)
 		try:
 			self.save()
 		except:
 			pass
+		if self._parent:
+			self._parent._children.remove(self)
 		
 	def __getattr__(self, name):
 		if name == 'children':
@@ -151,6 +154,9 @@ class DummySettings():
 	def save(self):
 		pass
 		
+	def delete(self):
+		self.__delattr__(self._name)
+		
 def CreateKeyPath(name, parent=None):
 	if parent:
 		return os.path.join(parent, name)
@@ -212,7 +218,10 @@ class RegSettings(SettingsBase):
 					val = repr(attr)
 				winreg.SetValueEx(rootkey, keyword, 0, winreg.REG_SZ, val)
 			for keyword in self._deletedkeywords:
-				winreg.DeleteValue(rootkey, keyword)
+				try:
+					winreg.DeleteValue(rootkey, keyword)
+				except FileNotFoundError:
+					pass
 			self._changed = False
 		SettingsBase.save(self)
 		
