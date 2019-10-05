@@ -26,7 +26,7 @@ __all__ = [
 	'HKLM', 'HKCU'
 	]
 
-__version__ = '0.1.1.0'
+__version__ = '0.1.1.1'
 
 SoftwarePrefix = True
 VendorPrefix = ''
@@ -35,8 +35,22 @@ class SettingsError(ValueError):
 	pass
 
 class SettingsBase(object):
-	_reserved_names = ['_name', '_parent', '_children', '_changed', '_keywords', '_deletedkeywords', '_filepath']
+	_reserved_names = ['_name', '_parent', '_children', '_changed', '_keywords', '_deletedkeywords', '_filepath', '_initialised']
+	def __new__(classname, *args, **kwargs):
+#		print(classname, args, kwargs)
+		if kwargs.get('parent', None) != None:
+			for child in kwargs['parent']._children:
+				if child._name == kwargs['name']:
+					return child
+		
+		self = object.__new__(classname)
+#		self.__init__(*args, **kwargs)
+		return self
+		
 	def __init__(self, name, parent=None, defaults=None, recursive=False):
+		if (hasattr(self, '_initialised')):
+			if (self._initialised):
+				return
 		self._name = name
 		self._keywords = []
 		self._deletedkeywords = []
@@ -48,6 +62,7 @@ class SettingsBase(object):
 					raise SettingsError('sibling settings objects must have distinct names')
 			parent._children.append(self)
 		self._parent = parent
+		self._initialised = True
 		if defaults:
 			self.load_defaults(defaults)
 		self.load(recursive)
@@ -300,11 +315,11 @@ def Settings(keytype=None, filepath=None, name=None, parent=None, defaults=None,
 		if isinstance(parent, RegSettings):
 			return RegSettings(None, name, parent, defaults, recursive)
 		elif isinstance(parent, FileSettings):
-			return FileSettings(filepath, name, parent, defaults, recursive)
+			return FileSettings(filepath=filepath, name=name, parent=parent, defaults=defaults, recursive=recursive)
 		else:
 			raise SettingsError('parent must be an instance of a settings class')
 	else:
 		if (keytype and _windows_platform):
 			return RegSettings(keytype, name, None, defaults, recursive)
 		else:
-			return FileSettings(filepath, name, None, defaults, recursive)
+			return FileSettings(filepath=filepath, name=name, parent=None, defaults=defaults, recursive=recursive)
