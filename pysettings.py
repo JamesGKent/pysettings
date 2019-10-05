@@ -26,7 +26,7 @@ __all__ = [
 	'HKLM', 'HKCU'
 	]
 
-__version__ = '0.1.1.1'
+__version__ = '0.1.1.2'
 
 SoftwarePrefix = True
 VendorPrefix = ''
@@ -103,10 +103,25 @@ class SettingsBase(object):
 				self._changed = True
 			if name in self._deletedkeywords:
 				self._deletedkeywords.remove(name)
-		# if callable and we have a value already
-		if callable(val) and hasattr(self, name):
-			if not callable(getattr(self, name)):
-				val(getattr(self, name)) # call func with value
+		
+		# if we already have attribute with this name maybe need to do something special
+		if hasattr(self, name):
+			# if new value is callable
+			if callable(val):
+				# if existing attribute not callable
+				if not callable(getattr(self, name)):
+					# call the new attribute with the old value
+					# this is on the assumption the value has been loaded from file
+					val(getattr(self, name)) # call func with value
+			
+			# if existing attribute is callable and value is not
+			if (callable(getattr(self, name)) and not callable(val)):
+				# call existing attribute with new value
+				getattr(self, name)(val)
+				# return here to prevent replacing the attibute
+				# this facilitates doing multiple loads etc
+				return
+			
 		self.__dict__[name] = val
 		
 	def __delattr__(self, name):
