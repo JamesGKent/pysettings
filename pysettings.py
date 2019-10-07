@@ -48,21 +48,28 @@ class SettingsBase(object):
 		return self
 		
 	def __init__(self, name, parent=None, defaults=None, recursive=False):
-		if (hasattr(self, '_initialised')):
-			if (self._initialised):
-				return
-		self._name = name
-		self._keywords = []
-		self._deletedkeywords = []
-		self._children = []
-		self._changed = False
+#		if (hasattr(self, '_initialised')):
+#			if (self._initialised):
+#				return
+		if not hasattr(self, '_name'):
+			self._name = name
+		if not hasattr(self, '_keywords'):
+			self._keywords = []
+		if not hasattr(self, '_deletedkeywords'):
+			self._deletedkeywords = []
+		if not hasattr(self, '_children'):
+			self._children = []
+		if not hasattr(self, '_changed'):
+			self._changed = False
 		if parent:
 			for child in parent._children:
-				if child._name == name:
+				if child._name == name and child is not self:
 					raise SettingsError('sibling settings objects must have distinct names')
-			parent._children.append(self)
-		self._parent = parent
-		self._initialised = True
+			if (self not in parent._children):
+				parent._children.append(self)
+		if not hasattr(self, '_parent'):
+			self._parent = parent
+#		self._initialised = True
 		if defaults:
 			self.load_defaults(defaults)
 		self.load(recursive)
@@ -116,6 +123,7 @@ class SettingsBase(object):
 			
 			# if existing attribute is callable and value is not
 			if (callable(getattr(self, name)) and not callable(val)):
+				print('loading new val: %s into %s' %(val, name))
 				# call existing attribute with new value
 				getattr(self, name)(val)
 				# return here to prevent replacing the attibute
